@@ -84,6 +84,7 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
         postprocessing_defences: Union["Postprocessor", List["Postprocessor"], None] = None,
         preprocessing: "PREPROCESSING_TYPE" = (0.0, 1.0),
         device_type: str = "gpu",
+        model_type: str = ""
     ) -> None:
         """
         Initialization specifically for the PyTorch-based implementation.
@@ -128,7 +129,8 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
         )
         self.nb_classes = nb_classes
         self._input_shape = input_shape
-        self._model = self._make_model_wrapper(model)
+        self._model_type = model_type
+        self._model = self._make_model_wrapper(model, model_type=self._model_type)
         self._loss = loss
         self._optimizer = optimizer
         self._use_amp = use_amp
@@ -1118,7 +1120,7 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
 
         return repr_
 
-    def _make_model_wrapper(self, model: "torch.nn.Module") -> "torch.nn.Module":
+    def _make_model_wrapper(self, model: "torch.nn.Module", model_type: str ="") -> "torch.nn.Module":
         # Try to import PyTorch and create an internal class that acts like a model wrapper extending torch.nn.Module
         try:
             import torch
@@ -1133,7 +1135,7 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
 
                     import torch
 
-                    def __init__(self, model: torch.nn.Module):
+                    def __init__(self, model: torch.nn.Module, model_type:str=""):
                         """
                         Initialization by storing the input model.
 
@@ -1141,6 +1143,7 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
                         """
                         super().__init__()
                         self._model = model
+                        self._model_type = model_type
 
                     # pylint: disable=W0221
                     # disable pylint because of API requirements for function
@@ -1163,7 +1166,12 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
                                 result.append(x)
 
                         elif isinstance(self._model, torch.nn.Module):
-                            x = self._model(x)
+                            #print("model_type is ", self._model_type)
+                            if self._model_type == "SequenceClassification":
+                                x = x.type(torch.LongTensor)
+                                x = self._model(x).logits
+                            else:
+                                x = self._model(x)
                             result.append(x)
 
                         else:  # pragma: no cover
@@ -1205,7 +1213,7 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
                 self._model_wrapper = ModelWrapper
 
             # Use model wrapping class to wrap the PyTorch model received as argument
-            return self._model_wrapper(model)
+            return self._model_wrapper(model, model_type=model_type)
 
         except ImportError:  # pragma: no cover
             raise ImportError("Could not find PyTorch (`torch`) installation.") from ImportError
