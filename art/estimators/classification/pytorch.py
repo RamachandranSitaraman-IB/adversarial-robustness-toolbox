@@ -332,6 +332,8 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
             with torch.no_grad():
                 model_outputs = self._model(x_batch)
             output = model_outputs[-1]
+            if self._model_type == "GenerateForAttack":
+                output = output.logits
             output = output.detach().cpu().numpy().astype(np.float32)
             if len(output.shape) == 1:
                 output = np.expand_dims(output, axis=1).astype(np.float32)
@@ -795,6 +797,8 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
         :return: Array of gradients of the same shape as `x`.
         """
         import torch
+        if self._model_type == "GenerateForAttack":
+            training_mode = True
 
         self._model.train(mode=training_mode)
 
@@ -828,6 +832,8 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
             x_grad = torch.from_numpy(x_preprocessed).to(self._device)
             x_grad.requires_grad = True
             inputs_t = x_grad
+            inputs_t.retain_grad()
+            x_grad.retain_grad()
         else:
             raise NotImplementedError("Combination of inputs and preprocessing not supported.")
 
@@ -841,11 +847,18 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
 
         # Compute the gradient and return
         model_outputs = self._model(inputs_t)
-        loss = self._loss(model_outputs[-1], labels_t)
+        input_logits = None
+        if self._model_type == "GenerateForAttack":
+            input_logits = model_outputs[-1].logits
+            input_logits.retain_grad()
+            loss = self._loss(input_logits, labels_t)
+
+        else:
+            loss = self._loss(model_outputs[-1], labels_t)
 
         # Clean gradients
         self._model.zero_grad()
-
+        print("loss is", loss)
         # Compute gradients
         if self._use_amp:  # pragma: no cover
             from apex import amp  # pylint: disable=E0611
@@ -854,7 +867,11 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
                 scaled_loss.backward()
 
         else:
-            loss.backward()
+            if self._model_type == "GenerateForAttack":
+                loss.backward(retain_graph=True)
+            else:
+                loss.backward()
+        print("requiresgrad", x_grad.requires_grad, self._optimizer)
 
         if x_grad.grad is not None:
             if isinstance(x, torch.Tensor):
@@ -1170,6 +1187,9 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
                             if self._model_type == "SequenceClassification":
                                 x = x.type(torch.LongTensor)
                                 x = self._model(x).logits
+                            elif self._model_type == "GenerateForAttack":
+                                x = x.type(torch.LongTensor)
+                                x = self._model(x)
                             else:
                                 x = self._model(x)
                             result.append(x)
