@@ -858,7 +858,7 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
 
         # Clean gradients
         self._model.zero_grad()
-        print("loss is", loss)
+        #print("loss is", loss)
         # Compute gradients
         if self._use_amp:  # pragma: no cover
             from apex import amp  # pylint: disable=E0611
@@ -871,7 +871,7 @@ class PyTorchClassifier(ClassGradientsMixin, ClassifierMixin, PyTorchEstimator):
                 loss.backward(retain_graph=True)
             else:
                 loss.backward()
-        print("requiresgrad", x_grad.requires_grad, self._optimizer)
+        #print("requiresgrad", x_grad.requires_grad, self._optimizer)
 
         if x_grad.grad is not None:
             if isinstance(x, torch.Tensor):
