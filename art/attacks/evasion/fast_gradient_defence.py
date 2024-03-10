@@ -110,7 +110,7 @@ class FastGradientMethodDefence(EvasionAttack):
         self.batch_size = batch_size
         self.minimal = minimal
         self._project = True
-        FastGradientMethod._check_params(self)
+        FastGradientMethodDefence._check_params(self)
 
         self._batch_id = 0
         self._i_max_iter = 0
@@ -221,6 +221,7 @@ class FastGradientMethodDefence(EvasionAttack):
         :type mask: `np.ndarray`
         :return: An array holding the adversarial examples.
         """
+#        print("calling the function")
         mask = self._get_mask(x, **kwargs)
 
         # Ensure eps is broadcastable
@@ -480,6 +481,7 @@ class FastGradientMethodDefence(EvasionAttack):
                     ).astype(object)
 
         x = x + perturbation_step
+#        print("ps is ", perturbation_step)
         if self.estimator.clip_values is not None:
             clip_min, clip_max = self.estimator.clip_values
             if x.dtype == object:
@@ -541,7 +543,7 @@ class FastGradientMethodDefence(EvasionAttack):
 
             # Get perturbation
             perturbation = self._compute_perturbation(batch, batch_labels, mask_batch, decay, momentum)
-
+#            print("perturbations are", perturbation)
             batch_eps: Union[int, float, np.ndarray]
             batch_eps_step: Union[int, float, np.ndarray]
 
