@@ -52,6 +52,7 @@ class DeepFoolVaccine(EvasionAttack):
         "epsilon",
         "nb_grads",
         "batch_size",
+        "strength",
         "verbose",
     ]
     _estimator_requirements = (BaseEstimator, ClassGradientsMixin)
@@ -63,6 +64,7 @@ class DeepFoolVaccine(EvasionAttack):
         epsilon: float = 1e-6,
         nb_grads: int = 10,
         batch_size: int = 1,
+        strength: float = 1.0,
         verbose: bool = True,
     ) -> None:
         """
@@ -82,6 +84,7 @@ class DeepFoolVaccine(EvasionAttack):
         self.nb_grads = nb_grads
         self.batch_size = batch_size
         self.verbose = verbose
+        self.strength = strength
         self._check_params()
         if self.estimator.clip_values is None:
             logger.warning(
@@ -168,7 +171,7 @@ class DeepFoolVaccine(EvasionAttack):
                 )
                 r_var = absolute1 / pow1
                 r_var = r_var.reshape((-1,) + (1,) * (len(x.shape) - 1))
-                r_var = r_var * grad_diff[np.arange(len(grad_diff)), l_var]
+                r_var = r_var * grad_diff[np.arange(len(grad_diff)), l_var] * self.strength
 
                 # Add perturbation and clip result
                 if self.estimator.clip_values is not None:
