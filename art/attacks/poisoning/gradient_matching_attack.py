@@ -476,7 +476,7 @@ class GradientMatchingAttack(Attack):
                 return self.len
 
         trainloader = torch.utils.data.DataLoader(
-            PoisonDataset(x_poison, y_poison), batch_size=self.batch_size, shuffle=False, num_workers=1
+            PoisonDataset(x_poison, y_poison), batch_size=self.batch_size, shuffle=False, num_workers=0
         )
 
         epoch_iterator = (
@@ -508,7 +508,7 @@ class GradientMatchingAttack(Attack):
         all_poisoned_samples = []
         self.backdoor_model.eval()
         poisonloader = torch.utils.data.DataLoader(
-            PoisonDataset(x_poison, y_poison), batch_size=self.batch_size, shuffle=False, num_workers=1
+            PoisonDataset(x_poison, y_poison), batch_size=self.batch_size, shuffle=False, num_workers=0
         )
         for x, indices, y in poisonloader:
             x = x.to(device)
