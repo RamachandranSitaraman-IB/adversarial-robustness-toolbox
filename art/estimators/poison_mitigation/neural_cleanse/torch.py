@@ -30,34 +30,34 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
     ]
 
     def __init__(
-        self,
-        model,
-        input_shape,
-        num_classes,
-        channels_first=False,
-        clip_values=None,
-        preprocessing_defences=None,
-        postprocessing_defences=None,
-        preprocessing=(0.0, 1.0),
-        steps=1000,
-        init_cost=1e-3,
-        norm=2,
-        learning_rate=0.1,
-        attack_success_threshold=0.99,
-        patience=5,
-        early_stop=True,
-        early_stop_threshold=0.99,
-        early_stop_patience=10,
-        cost_multiplier=1.5,
-        batch_size=32,
-        loss = None,
+            self,
+            model,
+            input_shape,
+            num_classes,
+            channels_first=False,
+            clip_values=None,
+            preprocessing_defences=None,
+            postprocessing_defences=None,
+            preprocessing=(0.0, 1.0),
+            steps=1000,
+            init_cost=1e-3,
+            norm=2,
+            learning_rate=0.1,
+            attack_success_threshold=0.99,
+            patience=5,
+            early_stop=True,
+            early_stop_threshold=0.99,
+            early_stop_patience=10,
+            cost_multiplier=1.5,
+            batch_size=32,
+            loss=None,
     ):
         super().__init__(
-            steps= steps,
-            model = model,
+            steps=steps,
+            model=model,
             input_shape=input_shape,
             nb_classes=num_classes,
-            loss= loss,
+            loss=loss,
             # channels_first,
             # clip_values,
             # preprocessing_defences,
@@ -83,11 +83,28 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
         self.mask_tensor = torch.tanh(self.mask_tensor_raw) / (2 - torch.tensor(torch.finfo(torch.float32).eps)) + 0.5
 
         self.pattern_tensor_raw = torch.nn.Parameter(pattern)
-        self.pattern_tensor = torch.tanh(self.pattern_tensor_raw) / (2 - torch.tensor(torch.finfo(torch.float32).eps)) + 0.5
+        self.pattern_tensor = torch.tanh(self.pattern_tensor_raw) / (
+                    2 - torch.tensor(torch.finfo(torch.float32).eps)) + 0.5
 
-        # self.optimizer = torch.optim.Adam(
-        #     [self.mask_tensor_raw, self.pattern_tensor_raw], lr=learning_rate, betas=(0.5, 0.9)
-        #)
+        # Initialize optimizer
+        # self.initialize_optimizer(learning_rate)
+        print(f" self.optimizer is {self.optimizer} , type {type(self.optimizer)}")
+
+        # print(self.optimizer, type(self.optimizer))
+        self.custom_optimizer = torch.optim.Adam(
+            [self.mask_tensor_raw, self.pattern_tensor_raw], lr=learning_rate, betas=(0.5, 0.9)
+        )
+
+        self.cost = init_cost
+        # Initialize optimizer
+        # self.initialize_optimizer(learning_rate)
+
+        # # print(f" estimator_params are  {self.estimator_params}")
+
+    # def initialize_optimizer(self, learning_rate):
+    #     self.optimizer = torch.optim.Adam(
+    #         [self.mask_tensor_raw, self.pattern_tensor_raw], lr=learning_rate, betas=(0.5, 0.9)
+    #     )
 
     def reset(self):
         super().reset()
@@ -95,7 +112,7 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
         self.pattern_tensor_raw.data.zero_()
 
     def generate_backdoor(
-        self, x_val: np.ndarray, y_val: np.ndarray, y_target: np.ndarray
+            self, x_val: np.ndarray, y_val: np.ndarray, y_target: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
 
         self.reset()
@@ -117,13 +134,20 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
         early_stop_reg_best = reg_best
         mini_batch_size = len(dataloader)
 
+        # print(self.optimizer, type(self.optimizer))
+
+        # self.optimizer = torch.optim.Adam(
+        #     [self.mask_tensor_raw, self.pattern_tensor_raw], lr = self.learning_rate, betas=(0.5, 0.9)
+        # )
+
         for _ in tqdm(range(self.steps), desc=f"Generating backdoor for class {np.argmax(y_target)}"):
             loss_reg_list = []
             loss_acc_list = []
 
             for x_batch, y_batch in dataloader:
                 x_batch, y_batch = x_batch.to(self._device), y_batch.to(self._device)
-                loss_ce, loss_reg, loss_combined, loss_acc = self.train(x_batch, y_target.repeat(len(x_batch)))
+                print(f"x_batch \n {type(x_batch)} {x_batch.shape}  y_batch \n {type(y_batch)} {y_batch.shape}")
+                loss_ce, loss_reg, loss_combined, loss_acc = self.train(x_batch, y_batch)
                 loss_reg_list.append(loss_reg.item())
                 loss_acc_list.append(loss_acc.item())
 
@@ -154,7 +178,7 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
                 cost_set_counter += 1
                 if cost_set_counter >= self.patience:
                     self.cost = self.init_cost
-                    self.optimizer.param_groups[0]['lr'] = self.learning_rate
+                    self.custom_optimizer.param_groups[0]['lr'] = self.learning_rate
                     cost_up_counter = 0
                     cost_down_counter = 0
                     cost_up_flag = False
@@ -172,12 +196,12 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
             if cost_up_counter >= self.patience:
                 cost_up_counter = 0
                 self.cost *= self.cost_multiplier_up
-                self.optimizer.param_groups[0]['lr'] = self.learning_rate
+                self.custom_optimizer.param_groups[0]['lr'] = self.learning_rate
                 cost_up_flag = True
             elif cost_down_counter >= self.patience:
                 cost_down_counter = 0
                 self.cost /= self.cost_multiplier_down
-                self.optimizer.param_groups[0]['lr'] = self.learning_rate
+                self.custom_optimizer.param_groups[0]['lr'] = self.learning_rate
                 cost_down_flag = True
 
         if mask_best is None:
@@ -189,13 +213,16 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
 
         return mask_best, pattern_best
 
-    def train(self, x: torch.Tensor, y_target: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        self.optimizer.zero_grad()
+    def train(self, x: torch.Tensor, y_target: torch.Tensor) -> Tuple[
+        torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        self.custom_optimizer.zero_grad()
 
         reverse_mask_tensor = 1 - self.mask_tensor
         x_adv_tensor = reverse_mask_tensor * x + self.mask_tensor * self.pattern_tensor
         output_tensor = self.model(x_adv_tensor)
-
+        y_target = torch.tensor(y_target)
+        print(f"y_target  shape {y_target.shape}")
+        print(f"output_tensor  shape {output_tensor.shape}")
         loss_ce = F.cross_entropy(output_tensor, y_target)
         if self.norm == 1:
             loss_reg = torch.sum(torch.abs(self.mask_tensor)) / 3
@@ -203,21 +230,23 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
             loss_reg = torch.sqrt(torch.sum(torch.square(self.mask_tensor)) / 3)
 
         loss_combined = loss_ce + loss_reg * self.cost
-        loss_combined.backward()
-        self.optimizer.step()
+        loss_combined.backward(retain_graph=True)
+        self.custom_optimizer.step()
 
         # Compute accuracy
         pred_labels = torch.argmax(output_tensor, dim=1)
+        y_target = torch.argmax(y_target, dim=1)
+        print(f"pred_labels {pred_labels.shape} and y_target {y_target.shape}")
         correct = pred_labels.eq(y_target).sum().item()
         accuracy = correct / len(y_target)
 
         return loss_ce, loss_reg, loss_combined, torch.tensor(accuracy)
 
     def _predict_classifier(
-        self, x: np.ndarray, batch_size: int = 128, training_mode: bool = False, **kwargs
+            self, x: np.ndarray, batch_size: int = 128, training_mode: bool = False, **kwargs
     ) -> np.ndarray:
         x = x.astype(ART_NUMPY_DTYPE)
-        return PyTorchClassifier._predict_classifier(self, x=x, batch_size=batch_size, training_mode=training_mode, **kwargs)
+        return PyTorchClassifier.predict(self, x=x, batch_size=batch_size, training_mode=training_mode, **kwargs)
 
     def _fit_classifier(self, x: np.ndarray, y: np.ndarray, batch_size: int, nb_epochs: int, **kwargs) -> None:
         x = x.astype(ART_NUMPY_DTYPE)
@@ -254,7 +283,7 @@ class PyTorchNeuralCleanse(NeuralCleanseMixin, PyTorchClassifier):
         return self.loss_gradient(x=x, y=y, training_mode=training_mode, **kwargs)
 
     def class_gradient(
-        self, x: np.ndarray, label: Union[int, List[int], None] = None, training_mode: bool = False, **kwargs
+            self, x: np.ndarray, label: Union[int, List[int], None] = None, training_mode: bool = False, **kwargs
     ) -> np.ndarray:
-    
+
         return self.class_gradient(x=x, label=label, training_mode=training_mode, **kwargs)

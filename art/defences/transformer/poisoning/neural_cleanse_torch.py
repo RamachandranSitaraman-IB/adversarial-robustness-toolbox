@@ -52,24 +52,24 @@ class NeuralCleanse(Transformer):
         self._check_params()
 
     def __call__(  # type: ignore
-        self,
-        transformed_classifier: "CLASSIFIER_TYPE",
-        loss,
-        steps: int = 1000,
-        init_cost: float = 1e-3,
-        norm: Union[int, float] = 2,
-        learning_rate: float = 0.1,
-        attack_success_threshold: float = 0.99,
-        patience: int = 5,
-        early_stop: bool = True,
-        early_stop_threshold: float = 0.99,
-        early_stop_patience: int = 10,
-        cost_multiplier: float = 1.5,
-        batch_size: int = 32,
+            self,
+            transformed_classifier: "CLASSIFIER_TYPE",
+            loss,
+            steps: int = 1000,
+            init_cost: float = 1e-3,
+            norm: Union[int, float] = 2,
+            learning_rate: float = 0.1,
+            attack_success_threshold: float = 0.99,
+            patience: int = 5,
+            early_stop: bool = True,
+            early_stop_threshold: float = 0.99,
+            early_stop_patience: int = 10,
+            cost_multiplier: float = 1.5,
+            batch_size: int = 32,
     ) -> PyTorchNeuralCleanse:
         transformed_classifier = PyTorchNeuralCleanse(
             transformed_classifier.model,
-            loss= loss,
+            loss=loss,
             input_shape=transformed_classifier.input_shape,
             num_classes=transformed_classifier.nb_classes,
             init_cost=init_cost,
@@ -83,7 +83,7 @@ class NeuralCleanse(Transformer):
             cost_multiplier=cost_multiplier,
             batch_size=batch_size
             # input_shape=transformed_classifier.input_shape,
-        
+
             # nb_classes = transformed_classifier.nb_classes
         )
         return transformed_classifier
