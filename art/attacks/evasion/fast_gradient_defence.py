@@ -490,6 +490,7 @@ class FastGradientMethodDefence(EvasionAttack):
             # If shap_values are provided, adjust the perturbations based on the shap_values
             if shap_values is not None:
                 # Normalize the shap_values to have a maximum of 1
+                print("shap values are", shap_values)
                 normalized_shap_values = shap_values / np.max(shap_values)
                 # Adjust the perturbations: increase the perturbation for important features (high SHAP value)
                 perturbation_step *= (1 + normalized_shap_values)
