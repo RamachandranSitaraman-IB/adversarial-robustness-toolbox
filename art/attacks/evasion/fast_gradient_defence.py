@@ -207,7 +207,7 @@ class FastGradientMethodDefence(EvasionAttack):
 
         return adv_x
 
-    def generate(self, x: np.ndarray, y: Optional[np.ndarray] = None, **kwargs) -> np.ndarray:
+    def generate(self, x: np.ndarray, y: Optional[np.ndarray] = None, shap_values = None,  **kwargs) -> np.ndarray:
         """Generate adversarial samples and return them in an array.
 
         :param x: An array with the original inputs.
@@ -221,7 +221,7 @@ class FastGradientMethodDefence(EvasionAttack):
         :type mask: `np.ndarray`
         :return: An array holding the adversarial examples.
         """
-#        print("calling the function")
+        print("calling the function")
         mask = self._get_mask(x, **kwargs)
 
         # Ensure eps is broadcastable
@@ -265,6 +265,7 @@ class FastGradientMethodDefence(EvasionAttack):
                         x,
                         x,
                         y_array,
+                        shap_values,
                         mask,
                         self.eps,
                         self.eps,
@@ -388,6 +389,7 @@ class FastGradientMethodDefence(EvasionAttack):
         self,
         x: np.ndarray,
         y: np.ndarray,
+        shap_values: Optional[np.ndarray],
         mask: Optional[np.ndarray],
         decay: Optional[float] = None,
         momentum: Optional[np.ndarray] = None,
@@ -397,6 +399,7 @@ class FastGradientMethodDefence(EvasionAttack):
 
         # Get gradient wrt loss; invert it if attack is targeted
         grad = self.estimator.loss_gradient(x, y) * (1 - 2 * int(self.targeted))
+        grad = grad*(1 + shap_values)
 
         # Write summary
         if self.summary_writer is not None:  # pragma: no cover
@@ -497,6 +500,7 @@ class FastGradientMethodDefence(EvasionAttack):
         x: np.ndarray,
         x_init: np.ndarray,
         y: np.ndarray,
+        shap_values: Optional[np.ndarray],
         mask: Optional[np.ndarray],
         eps: Union[int, float, np.ndarray],
         eps_step: Union[int, float, np.ndarray],
@@ -542,7 +546,7 @@ class FastGradientMethodDefence(EvasionAttack):
                     mask_batch = mask[batch_index_1:batch_index_2]
 
             # Get perturbation
-            perturbation = self._compute_perturbation(batch, batch_labels, mask_batch, decay, momentum)
+            perturbation = self._compute_perturbation(batch, batch_labels, shap_values, mask_batch, decay, momentum)
 #            print("perturbations are", perturbation)
             batch_eps: Union[int, float, np.ndarray]
             batch_eps_step: Union[int, float, np.ndarray]
