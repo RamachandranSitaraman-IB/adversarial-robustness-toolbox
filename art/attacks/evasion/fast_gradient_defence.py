@@ -493,7 +493,7 @@ class FastGradientMethodDefence(EvasionAttack):
             print("shap values taken into account for perturbation")
             normalized_shap_values = shap_values / np.max(shap_values)
             # Adjust the perturbations: increase the perturbation for important features (high SHAP value)
-            perturbation_step *= (1 + normalized_shap_values)
+            perturbation_step *= (1 - normalized_shap_values)
 
         x = x + perturbation_step
 #        print("ps is ", perturbation_step)
