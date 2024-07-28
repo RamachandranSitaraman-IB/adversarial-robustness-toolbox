@@ -207,6 +207,7 @@ class FastGradientMethodDefence(EvasionAttack):
 
         return adv_x
 
+    #Adding shap_values to input
     def generate(self, x: np.ndarray, y: Optional[np.ndarray] = None, shap_values = None,  **kwargs) -> np.ndarray:
         """Generate adversarial samples and return them in an array.
 
