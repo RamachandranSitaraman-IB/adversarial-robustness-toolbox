@@ -401,6 +401,7 @@ class FastGradientMethodDefence(EvasionAttack):
 
         # Get gradient wrt loss; invert it if attack is targeted
         grad = self.estimator.loss_gradient(x, y) * (1 - 2 * int(self.targeted))
+        print("Correct with shap values")
         grad = grad*(1 + shap_values)
 
         # Write summary
