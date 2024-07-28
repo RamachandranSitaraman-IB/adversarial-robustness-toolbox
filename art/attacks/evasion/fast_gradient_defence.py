@@ -402,7 +402,7 @@ class FastGradientMethodDefence(EvasionAttack):
         # Get gradient wrt loss; invert it if attack is targeted
         grad = self.estimator.loss_gradient(x, y) * (1 - 2 * int(self.targeted))
         print("Correct with shap values")
-        grad = 0.0*shap_values
+        #grad = 0.0*shap_values
 
         # Write summary
         if self.summary_writer is not None:  # pragma: no cover
@@ -472,7 +472,8 @@ class FastGradientMethodDefence(EvasionAttack):
         return grad
 
     def _apply_perturbation(
-        self, x: np.ndarray, perturbation: np.ndarray, eps_step: Union[int, float, np.ndarray]
+        self, x: np.ndarray, perturbation: np.ndarray, eps_step: Union[int, float, np.ndarray],
+        shap_values: Optional[np.ndarray] = None
     ) -> np.ndarray:
 
         perturbation_step = eps_step * perturbation
@@ -485,6 +486,13 @@ class FastGradientMethodDefence(EvasionAttack):
                     perturbation_step[i] = np.where(
                         np.isnan(perturbation_step_i_array), 0.0, perturbation_step_i_array
                     ).astype(object)
+
+            # If shap_values are provided, adjust the perturbations based on the shap_values
+            if shap_values is not None:
+                # Normalize the shap_values to have a maximum of 1
+                normalized_shap_values = shap_values / np.max(shap_values)
+                # Adjust the perturbations: increase the perturbation for important features (high SHAP value)
+                perturbation_step *= (1 + normalized_shap_values)
 
         x = x + perturbation_step
 #        print("ps is ", perturbation_step)
@@ -569,7 +577,7 @@ class FastGradientMethodDefence(EvasionAttack):
                 batch_eps_step = eps_step
 
             # Apply perturbation and clip
-            x_adv[batch_index_1:batch_index_2] = self._apply_perturbation(batch, perturbation, batch_eps_step)
+            x_adv[batch_index_1:batch_index_2] = self._apply_perturbation(batch, perturbation, batch_eps_step, shap_values)
 
             if project:
                 if x_adv.dtype == object:
