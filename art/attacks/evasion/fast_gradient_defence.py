@@ -401,7 +401,7 @@ class FastGradientMethodDefence(EvasionAttack):
 
         # Get gradient wrt loss; invert it if attack is targeted
         grad = self.estimator.loss_gradient(x, y) * (1 - 2 * int(self.targeted))
-        grad = shap_values
+        #grad = shap_values
         print("Correct with shap valuess", grad)
         #grad = 0.0*shap_values
 
@@ -491,11 +491,11 @@ class FastGradientMethodDefence(EvasionAttack):
             # If shap_values are provided, adjust the perturbations based on the shap_values
         if shap_values is not None:
             # Normalize the shap_values to have a maximum of 1
-            print("shap values taken into account for perturbation")
+            print("shap values taken into account for perturbation", 1/eps_step)
             normalized_shap_values = shap_values / np.max(shap_values)
             # Adjust the perturbations: increase the perturbation for important features (high SHAP value)
-            #perturbation_step *= (1 - 10*normalized_shap_values)
-            perturbation_step -= normalized_shap_values
+            perturbation_step *= (1 - (1/eps_step) *normalized_shap_values)
+            #perturbation_step -= normalized_shap_values
 
         x = x + perturbation_step
 #        print("ps is ", perturbation_step)
